@@ -1,0 +1,81 @@
+C51 COMPILER V9.02   INTERRUPT                                                             05/24/2022 11:01:00 PAGE 1   
+
+
+C51 COMPILER V9.02, COMPILATION OF MODULE INTERRUPT
+OBJECT MODULE PLACED IN Interrupt.OBJ
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE Interrupt.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<reg52.h>
+   2          
+   3          sbit LED = P0^0;
+   4          sbit ADDR0 = P1^0;
+   5          sbit ADDR1 = P1^1;
+   6          sbit ADDR2 = P1^2;
+   7          sbit ADDR3 = P1^3;
+   8          sbit ENLED = P1^4;
+   9          
+  10          unsigned char T0RH = 0;
+  11          unsigned char T0RL = 0;
+  12          
+  13          unsigned char cnt = 0;
+  14          void ConfigTimer0(unsigned int ms);
+  15          void main()
+  16          {
+  17   1      
+  18   1              EA = 1;
+  19   1              ENLED = 0;
+  20   1              ADDR3 = 1;
+  21   1              ADDR2 = 1;
+  22   1              ADDR1 = 1;
+  23   1              ADDR0 = 0;
+  24   1              ConfigTimer0(20);
+  25   1              while(1)
+  26   1              {               
+  27   2              }
+  28   1      }
+  29          
+  30          void InterruptTimer0() interrupt 1
+  31          {
+  32   1              TF0 = 0;
+  33   1              TH0 = T0RH; //并重新赋初值
+  34   1              TL0 = T0RL;
+  35   1              cnt++;
+  36   1              if(cnt >= 50)
+  37   1              {
+  38   2                      cnt = 0;
+  39   2                      LED = ~LED;
+  40   2              }
+  41   1      }
+  42          
+  43          void ConfigTimer0(unsigned int ms)
+  44          {       unsigned long tmp = 0;
+  45   1      
+  46   1              tmp = 11059200 / 12; // 一个机器周期
+  47   1              tmp = (tmp * ms) / 1000;
+  48   1              tmp = 65536 - tmp;
+  49   1              T0RH = (unsigned char)(tmp >> 8);
+  50   1              T0RL = (unsigned char)tmp;
+  51   1              TMOD = 0x01; //设置 T0 为模式 1
+  52   1              TH0 = T0RH; //为 T0 赋初值 0xB800
+  53   1              TL0 = T0RL;
+  54   1              ET0 = 1; //使能 T0 中断
+  55   1              TR0 = 1; //启动 T0
+C51 COMPILER V9.02   INTERRUPT                                                             05/24/2022 11:01:00 PAGE 2   
+
+  56   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    155    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

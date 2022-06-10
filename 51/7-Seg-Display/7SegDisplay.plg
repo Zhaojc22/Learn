@@ -1,0 +1,16 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Project:</h2>
+D:\c51\7-Seg-Display\7SegDisplay.uvproj
+Project File Date:  05/12/2022
+
+<h2>Output:</h2>
+Build target 'Target 1'
+assembling STARTUP.A51...
+compiling 7SegDisplay.c...
+linking...
+Program Size: data=22.0 xdata=0 code=813
+creating hex file from "7SegDisplay"...
+"7SegDisplay" - 0 Error(s), 0 Warning(s).

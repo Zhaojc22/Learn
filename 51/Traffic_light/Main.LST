@@ -1,0 +1,105 @@
+C51 COMPILER V9.02   MAIN                                                                  05/26/2022 16:26:35 PAGE 1   
+
+
+C51 COMPILER V9.02, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN Main.OBJ
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE Main.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <reg52.h>
+   2          
+   3          sbit ADDR0 = P1 ^ 0;
+   4          sbit ADDR1 = P1 ^ 1;
+   5          sbit ADDR2 = P1 ^ 2;
+   6          sbit ADDR3 = P1 ^ 3;
+   7          sbit ENLED = P1 ^ 4;
+   8          
+   9          sbit LED_SEC = P0 ^ 0;
+  10          
+  11          unsigned char T0RH = 0;
+  12          unsigned char T0RL = 0;
+  13          void ConfigTimer0(unsigned int ms);
+  14          unsigned char cnt = 0;
+  15          unsigned char sec = 0;
+  16          void main()
+  17          {
+  18   1          EA = 1;
+  19   1          ENLED = 0;
+  20   1          ADDR3 = 1;
+  21   1          ADDR2 = 1;
+  22   1          ADDR1 = 1;
+  23   1          ADDR0 = 0;
+  24   1          P0 &= 0x00;
+  25   1          P0 |= 0xFE;
+  26   1          ConfigTimer0(20);
+  27   1          while (1)
+  28   1              ;
+  29   1      }
+  30          
+  31          void InterruptTimer0() interrupt 1
+  32          {
+  33   1          TF0 = 0;
+  34   1          TH0 = T0RH;
+  35   1          TL0 = T0RL;
+  36   1          cnt++;
+  37   1          if (cnt >= 50)
+  38   1          {
+  39   2              cnt = 0;
+  40   2              LED_SEC = ~LED_SEC;
+  41   2              sec++;
+  42   2              if (sec < 10)
+  43   2              {
+  44   3                  P0 &= 0x01;
+  45   3                  P0 |= 0xFC;
+  46   3              }
+  47   2              else if (sec < 20)
+  48   2              {
+  49   3                  P0 &= 0x01;
+  50   3                  P0 |= 0xFA;
+  51   3              }
+  52   2              else if (sec < 22)
+  53   2              {
+  54   3                  P0 &= 0x01;
+  55   3                  P0 |= 0xF6;
+C51 COMPILER V9.02   MAIN                                                                  05/26/2022 16:26:35 PAGE 2   
+
+  56   3              }
+  57   2              else
+  58   2              {
+  59   3                  sec = 0;
+  60   3                  P0 &= 0x01;
+  61   3                  P0 |= 0xFE;
+  62   3              }
+  63   2          }
+  64   1      }
+  65          
+  66          void ConfigTimer0(unsigned int ms)
+  67          {
+  68   1          unsigned long tmp;
+  69   1      
+  70   1          tmp = 11059200 / 12;
+  71   1          tmp = (tmp * ms) / 1000;
+  72   1          tmp = 65536 - tmp;
+  73   1          T0RH = (unsigned char)(tmp >> 8);
+  74   1          T0RL = (unsigned char)tmp;
+  75   1          TH0 = T0RH;
+  76   1          TL0 = T0RL;
+  77   1          TMOD = 0x01;
+  78   1          ET0 = 1;
+  79   1          TR0 = 1;
+  80   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    210    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

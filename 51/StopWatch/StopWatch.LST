@@ -1,0 +1,227 @@
+C51 COMPILER V9.02   STOPWATCH                                                             05/24/2022 09:57:33 PAGE 1   
+
+
+C51 COMPILER V9.02, COMPILATION OF MODULE STOPWATCH
+OBJECT MODULE PLACED IN StopWatch.OBJ
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE StopWatch.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <reg52.h>
+   2          
+   3          sbit ADDR3 = P1 ^ 3;
+   4          sbit ENLED = P1 ^ 4;
+   5          sbit KEY1 = P2 ^ 4;
+   6          sbit KEY2 = P2 ^ 5;
+   7          sbit KEY3 = P2 ^ 6;
+   8          sbit KEY4 = P2 ^ 7;
+   9          
+  10          unsigned char code LedChar[] = {
+  11                  0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8,
+  12                  0x80, 0x90, 0x88, 0x83, 0xC6, 0xA1, 0x86, 0x8E};
+  13          
+  14          unsigned char LedBuff[6] = {
+  15                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  16          
+  17          unsigned char KeySta[4] = {
+  18                  1, 1, 1, 1};
+  19          
+  20          bit StopwatchRunning = 0;          //秒表运行标志
+  21          bit StopwatchRefresh = 1;          //秒表计数刷新标志
+  22          unsigned char DecimalPart = 0; //秒表的小数部分
+  23          unsigned int IntegerPart = 0;  //秒表的整数部分
+  24          unsigned char T0RH = 0;            // T0 重载值的高字节
+  25          unsigned char T0RL = 0;            // T0 重载值的低字节
+  26          
+  27          void ConfigTimer0(unsigned int ms);
+  28          void StopwatchDisplay();
+  29          void KeyDriver();
+  30          
+  31          void main()
+  32          {
+  33   1              EA = 1;
+  34   1              ENLED = 0;
+  35   1              ADDR3 = 1;
+  36   1              P2 = 0xFE;
+  37   1              ConfigTimer0(2);
+  38   1              while (1)
+  39   1              {
+  40   2                      if (StopwatchRefresh)
+  41   2                      {
+  42   3                              StopwatchRefresh = 0;
+  43   3                              StopwatchDisplay();
+  44   3                      }
+  45   2                      KeyDriver();
+  46   2              }
+  47   1      }
+  48          
+  49          void ConfigTimer0(unsigned int ms)
+  50          {
+  51   1              unsigned long tmp;
+  52   1              tmp = 12000000 / 12;
+  53   1              tmp = (tmp * ms) / 1000;
+  54   1              tmp = 65536 - tmp;
+  55   1              tmp = tmp + 18;
+C51 COMPILER V9.02   STOPWATCH                                                             05/24/2022 09:57:33 PAGE 2   
+
+  56   1              T0RH = (unsigned char)(tmp >> 8);
+  57   1              T0RL = (unsigned char)tmp;
+  58   1              TMOD = (TMOD & 0xF0) | 0x01;
+  59   1              TH0 = T0RH;
+  60   1              TL0 = T0RL;
+  61   1              ET0 = 1;
+  62   1              TR0 = 1;
+  63   1      }
+  64          /* 秒表计数显示函数 */
+  65          void StopwatchDisplay()
+  66          {
+  67   1              signed char i;
+  68   1              unsigned char buf[4]; //数据转换的缓冲区
+  69   1      
+  70   1              //小数部分转换到低 2 位
+  71   1              LedBuff[0] = LedChar[DecimalPart % 10];
+  72   1              LedBuff[1] = LedChar[DecimalPart / 10];
+  73   1              //整数部分转换到高 4 位
+  74   1              buf[0] = IntegerPart % 10;
+  75   1              buf[1] = (IntegerPart / 10) % 10;
+  76   1              buf[2] = (IntegerPart / 100) % 10;
+  77   1              buf[3] = (IntegerPart / 1000) % 10;
+  78   1              for (i = 3; i >= 1; i--) //整数部分高位的 0 转换为空字符
+  79   1              {
+  80   2                      if (buf[i] == 0)
+  81   2                              LedBuff[i + 2] = 0xFF;
+  82   2                      else
+  83   2                              break;
+  84   2              }
+  85   1              for (; i >= 0; i--) //有效数字位转换为显示字符
+  86   1              {
+  87   2                      LedBuff[i + 2] = LedChar[buf[i]];
+  88   2              }
+  89   1              LedBuff[2] &= 0x7F; //点亮小数点
+  90   1      }
+  91          /* 秒表启停函数 */
+  92          void StopwatchAction()
+  93          {
+  94   1              if (StopwatchRunning) //已启动则停止
+  95   1                      StopwatchRunning = 0;
+  96   1              else //未启动则启动
+  97   1                      StopwatchRunning = 1;
+  98   1      }
+  99          /* 秒表复位函数 */
+ 100          void StopwatchReset()
+ 101          {
+ 102   1              StopwatchRunning = 0; //停止秒表
+ 103   1              DecimalPart = 0;          //清零计数值
+ 104   1              IntegerPart = 0;
+ 105   1              StopwatchRefresh = 1; //置刷新标志
+ 106   1      }
+ 107          /* 按键驱动函数，检测按键动作，调度相应动作函数，需在主循环中调用 */
+ 108          void KeyDriver()
+ 109          {
+ 110   1              unsigned char i;
+ 111   1              static unsigned char backup[4] = {1, 1, 1, 1};
+ 112   1              for (i = 0; i < 4; i++) //循环检测 4 个按键
+ 113   1              {
+ 114   2                      if (backup[i] != KeySta[i]) //检测按键动作
+ 115   2                      {
+ 116   3                              if (backup[i] != 0) //按键按下时执行动作
+ 117   3                              {
+C51 COMPILER V9.02   STOPWATCH                                                             05/24/2022 09:57:33 PAGE 3   
+
+ 118   4                                      if (i == 1) // Esc 键复位秒表
+ 119   4                                              StopwatchReset();
+ 120   4                                      else if (i == 2) //回车键启停秒表
+ 121   4                                              StopwatchAction();
+ 122   4                              }
+ 123   3                              backup[i] = KeySta[i]; //刷新前一次的备份值
+ 124   3                      }
+ 125   2              }
+ 126   1      }
+ 127          /* 按键扫描函数，需在定时中断中调用 */
+ 128          void KeyScan()
+ 129          {
+ 130   1              unsigned char i;
+ 131   1              static unsigned char keybuf[4] = {//按键扫描缓冲区
+ 132   1                                                                                0xFF, 0xFF, 0xFF, 0xFF};
+ 133   1      
+ 134   1              //按键值移入缓冲区
+ 135   1              keybuf[0] = (keybuf[0] << 1) | KEY1;
+ 136   1              keybuf[1] = (keybuf[1] << 1) | KEY2;
+ 137   1              keybuf[2] = (keybuf[2] << 1) | KEY3;
+ 138   1              keybuf[3] = (keybuf[3] << 1) | KEY4;
+ 139   1              //消抖后更新按键状态
+ 140   1              for (i = 0; i < 4; i++)
+ 141   1              {
+ 142   2                      if (keybuf[i] == 0x00)
+ 143   2                      { //连续 8 次扫描值为 0，即 16ms 内都是按下状态时，可认为按键已稳定的按下
+ 144   3                              KeySta[i] = 0;
+ 145   3                      }
+ 146   2                      else if (keybuf[i] == 0xFF)
+ 147   2                      { //连续 8 次扫描值为 1，即 16ms 内都是弹起状态时，可认为按键已稳定的弹起
+ 148   3                              KeySta[i] = 1;
+ 149   3                      }
+ 150   2              }
+ 151   1      }
+ 152          /* 数码管动态扫描刷新函数，需在定时中断中调用 */
+ 153          void LedScan()
+ 154          {
+ 155   1              static unsigned char i = 0; //动态扫描索引
+ 156   1      
+ 157   1              P0 = 0xFF;                        //关闭所有段选位，显示消隐
+ 158   1              P1 = (P1 & 0xF8) | i; //位选索引值赋值到 P1 口低 3 位
+ 159   1              P0 = LedBuff[i];          //缓冲区中索引位置的数据送到 P0 口
+ 160   1              if (i < 5)                        //索引递增循环，遍历整个缓冲区
+ 161   1                      i++;
+ 162   1              else
+ 163   1                      i = 0;
+ 164   1      }
+ 165          /* 秒表计数函数，每隔 10ms 调用一次进行秒表计数累加 */
+ 166          void StopwatchCount()
+ 167          {
+ 168   1              if (StopwatchRunning) //当处于运行状态时递增计数值
+ 169   1              {
+ 170   2                      DecimalPart++;                  //小数部分+1
+ 171   2                      if (DecimalPart >= 100) //小数部分计到 100 时进位到整数部分
+ 172   2                      {
+ 173   3                              DecimalPart = 0;
+ 174   3                              IntegerPart++;                    //整数部分+1
+ 175   3                              if (IntegerPart >= 10000) //整数部分计到 10000 时归零
+ 176   3                              {
+ 177   4                                      IntegerPart = 0;
+ 178   4                              }
+ 179   3                      }
+C51 COMPILER V9.02   STOPWATCH                                                             05/24/2022 09:57:33 PAGE 4   
+
+ 180   2                      StopwatchRefresh = 1; //设置秒表计数刷新标志
+ 181   2              }
+ 182   1      }
+ 183          /* T0 中断服务函数，完成数码管、按键扫描与秒表计数 */
+ 184          void InterruptTimer0() interrupt 1
+ 185          {
+ 186   1              static unsigned char tmr10ms = 0;
+ 187   1              TH0 = T0RH; //重新加载重载值
+ 188   1              TL0 = T0RL;
+ 189   1              LedScan(); //数码管扫描显示
+ 190   1              KeyScan(); //按键扫描
+ 191   1              //定时 10ms 进行一次秒表计数
+ 192   1              tmr10ms++;
+ 193   1              if (tmr10ms >= 5)
+ 194   1              {
+ 195   2                      tmr10ms = 0;
+ 196   2                      StopwatchCount(); //调用秒表计数函数
+ 197   2              }
+ 198   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    572    ----
+   CONSTANT SIZE    =     16    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     25       8
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

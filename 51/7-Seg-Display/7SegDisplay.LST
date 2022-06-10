@@ -1,0 +1,91 @@
+C51 COMPILER V9.02   7SEGDISPLAY                                                           05/12/2022 17:24:17 PAGE 1   
+
+
+C51 COMPILER V9.02, COMPILATION OF MODULE 7SEGDISPLAY
+OBJECT MODULE PLACED IN 7SegDisplay.OBJ
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE 7SegDisplay.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<reg52.h>
+   2          
+   3          sbit ADDR0 = P1^0;
+   4          sbit ADDR1 = P1^1;
+   5          sbit ADDR2 = P1^2;
+   6          sbit ADDR3 = P1^3;
+   7          sbit ENLED = P1^4;
+   8          
+   9          unsigned char code LedChar[] = {
+  10                  0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8,
+  11                  0x80, 0x90, 0x88, 0x83, 0xC6, 0xA1, 0x86, 0x8E
+  12          };
+  13          unsigned char LedBuffer[6] = {
+  14                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  15          };
+  16          
+  17          void main()
+  18          {
+  19   1              unsigned char LedPos = 0;
+  20   1              unsigned int cnt = 0;
+  21   1              unsigned long index = 0;
+  22   1      
+  23   1              ENLED = 0;
+  24   1              ADDR3 = 1;
+  25   1      
+  26   1              TMOD = 0x01;
+  27   1              TH0 = 0xFC;
+  28   1              TL0 = 0x17;
+  29   1              TR0 = 1;
+  30   1      
+  31   1              while(1)
+  32   1              {
+  33   2                      if(TF0 == 1)
+  34   2                      {
+  35   3                              TF0 = 0;
+  36   3                              TH0 = 0xFC;
+  37   3                              TL0 = 0x17;
+  38   3      
+  39   3                              cnt++;
+  40   3                              if(cnt >= 1000)
+  41   3                              {
+  42   4                                      cnt = 0;
+  43   4                                      index++;
+  44   4                                      LedBuffer[0] = LedChar[index%10];
+  45   4                                      LedBuffer[1] = LedChar[index/10%10];
+  46   4                                      LedBuffer[2] = LedChar[index/100%10];
+  47   4                                      LedBuffer[3] = LedChar[index/1000%10];
+  48   4                                      LedBuffer[4] = LedChar[index/10000%10];
+  49   4                                      LedBuffer[5] = LedChar[index/100000%10];
+  50   4                              }
+  51   3      
+  52   3                              if(LedPos == 0)
+  53   3                              {       ADDR2 = 0; ADDR1=0; ADDR0=0; LedPos++; P0 = LedBuffer[0]; }
+  54   3                              else if(LedPos == 1)
+  55   3                              {       ADDR2 = 0; ADDR1=0; ADDR0=1; LedPos++; P0 = LedBuffer[1]; }
+C51 COMPILER V9.02   7SEGDISPLAY                                                           05/12/2022 17:24:17 PAGE 2   
+
+  56   3                              else if(LedPos == 2)
+  57   3                              {       ADDR2 = 0; ADDR1=1; ADDR0=0; LedPos++; P0 = LedBuffer[2]; }
+  58   3                              else if(LedPos == 3)
+  59   3                              {       ADDR2 = 0; ADDR1=1; ADDR0=1; LedPos++; P0 = LedBuffer[3]; }
+  60   3                              else if(LedPos == 4)
+  61   3                              {       ADDR2 = 1; ADDR1=0; ADDR0=0; LedPos++; P0 = LedBuffer[4]; }
+  62   3                              else if(LedPos == 5)
+  63   3                              {       ADDR2 = 1; ADDR1=0; ADDR0=1; LedPos=0; P0 = LedBuffer[5]; }
+  64   3                      }
+  65   2              }
+  66   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    439    ----
+   CONSTANT SIZE    =     16    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6       7
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
