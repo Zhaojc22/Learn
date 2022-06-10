@@ -1,0 +1,319 @@
+C51 COMPILER V7.07   SLAVEFIFO                                                             06/07/2022 20:30:18 PAGE 1   
+
+
+C51 COMPILER V7.07, COMPILATION OF MODULE SLAVEFIFO
+OBJECT MODULE PLACED IN SlaveFIFO.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SlaveFIFO.c BROWSE DEBUG OBJECTEXTEND
+
+stmt level    source
+
+   1          #pragma NOIV
+   2          #include "fx2.h"
+   3          #include "fx2regs.h"
+   4          #include "syncdly.h"
+   5          
+   6          extern BOOL GotSUD; // Received setup data flag
+   7          extern BOOL Sleep;
+   8          extern BOOL Rwuen;
+   9          extern BOOL Selfpwr;
+  10          
+  11          BYTE Configuration;    // Current configuration
+  12          BYTE AlternateSetting; // Alternate settings
+  13          
+  14          #define bmEP2IRQ 0x10
+  15          #define bmEP6IRQ 0x40
+  16          
+  17          #define false 0
+  18          #define true ( !false )
+  19          #define POWER_LED_OFF()    do{ IOE &= ~0x0C; } while(false)
+  20          #define POWER_LED_RED()    do{ IOE &= ~0x08; IOE |= 0x04; } while(false)
+  21          #define POWER_LED_GREEN()  do{ IOE &= ~0x04; IOE |= 0x08; } while(false)
+  22          
+  23          void TD_Init(void)
+  24          {
+  25   1         CPUCS = ((CPUCS & ~bmCLKSPD) | bmCLKSPD1);
+  26   1              SYNCDELAY;
+  27   1      
+  28   1         //接口控制寄存器
+  29   1         //b7: 0=选择外部时钟源，1=选择内部时钟源
+  30   1         //b6：0=内部时钟30MHz，1=内部时钟48MHz
+  31   1         //b3: 0=FIFO同步运行，1=FIFO异步运行
+  32   1         //b[1:0]：选择接口模式, 00=Prots,01=Reserved,10=GPIF,11=Slave,
+  33   1              IFCONFIG |= 0xCB;         
+  34   1              SYNCDELAY;
+  35   1      
+  36   1              REVCTL = 0x03; //排除一些不必要的错误，不是必须，暂时不知道功能
+  37   1              SYNCDELAY;
+  38   1      
+  39   1              EP6CFG = 0xE0;
+  40   1              SYNCDELAY;
+  41   1      
+  42   1              FIFORESET = 0x80;
+  43   1              SYNCDELAY;
+  44   1      
+  45   1              FIFORESET = 0x86;
+  46   1              SYNCDELAY;
+  47   1      
+  48   1              FIFORESET = 0x00;
+  49   1              SYNCDELAY;
+  50   1      
+  51   1              EP6FIFOCFG = 0x0C;  //00001100  b0=0,选择8位带宽
+  52   1              SYNCDELAY;
+  53   1      
+  54   1              PORTCCFG = 0x00;  // Set Port C All pins are Prot C 
+  55   1      
+C51 COMPILER V7.07   SLAVEFIFO                                                             06/07/2022 20:30:18 PAGE 2   
+
+  56   1         OEC = 0xFF; //设置的打开PortC的输出缓冲区
+  57   1         AUTOPTRSETUP |= 0x01;
+  58   1      }
+  59          
+  60          void TD_Poll(void)
+  61          {
+  62   1      }
+  63          
+  64          BOOL TD_Suspend(void) // Called before the device goes into suspend mode
+  65          {
+  66   1         return (TRUE);
+  67   1      }
+  68          
+  69          BOOL TD_Resume(void) // Called after the device resumes
+  70          {
+  71   1         return (TRUE);
+  72   1      }
+  73          
+  74          BOOL DR_GetDescriptor(void)
+  75          {
+  76   1         return (TRUE);
+  77   1      }
+  78          
+  79          BOOL DR_SetConfiguration(void) // Called when a Set Configuration command is received
+  80          {
+  81   1         Configuration = SETUPDAT[2];
+  82   1         return (TRUE); // Handled by user code
+  83   1      }
+  84          
+  85          BOOL DR_GetConfiguration(void) // Called when a Get Configuration command is received
+  86          {
+  87   1         EP0BUF[0] = Configuration;
+  88   1         EP0BCH = 0;
+  89   1         EP0BCL = 1;
+  90   1         return (TRUE); // Handled by user code
+  91   1      }
+  92          BOOL DR_SetInterface(void) // Called when a Set Interface command is received
+  93          {
+  94   1         AlternateSetting = SETUPDAT[2];
+  95   1         return (TRUE); // Handled by user code
+  96   1      }
+  97          
+  98          BOOL DR_GetInterface(void) // Called when a Set Interface command is received
+  99          {
+ 100   1         EP0BUF[0] = AlternateSetting;
+ 101   1         EP0BCH = 0;
+ 102   1         EP0BCL = 1;
+ 103   1         return (TRUE); // Handled by user code
+ 104   1      }
+ 105          
+ 106          BOOL DR_GetStatus(void)
+ 107          {
+ 108   1         return (TRUE);
+ 109   1      }
+ 110          
+ 111          BOOL DR_ClearFeature(void)
+ 112          {
+ 113   1         return (TRUE);
+ 114   1      }
+ 115          
+ 116          BOOL DR_SetFeature(void)
+ 117          {
+C51 COMPILER V7.07   SLAVEFIFO                                                             06/07/2022 20:30:18 PAGE 3   
+
+ 118   1         return (TRUE);
+ 119   1      }
+ 120          
+ 121          BOOL DR_VendorCmnd(void)
+ 122          {
+ 123   1         return (TRUE);
+ 124   1      }
+ 125          
+ 126          void ISR_Sudav(void) interrupt 0
+ 127          {
+ 128   1         GotSUD = TRUE; // Set flag
+ 129   1         EZUSB_IRQ_CLEAR();
+ 130   1         USBIRQ = bmSUDAV; // Clear SUDAV IRQ
+ 131   1      }
+ 132          
+ 133          // Setup Token Interrupt Handler
+ 134          void ISR_Sutok(void) interrupt 0
+ 135          {
+ 136   1         EZUSB_IRQ_CLEAR();
+ 137   1         USBIRQ = bmSUTOK; // Clear SUTOK IRQ
+ 138   1      }
+ 139          
+ 140          void ISR_Sof(void) interrupt 0
+ 141          {
+ 142   1      
+ 143   1         EZUSB_IRQ_CLEAR();
+ 144   1         USBIRQ = bmSOF; // Clear SOF IRQ
+ 145   1      }
+ 146          
+ 147          void ISR_Ures(void) interrupt 0
+ 148          {
+ 149   1         // whenever we get a USB reset, we should revert to full speed mode
+ 150   1         pConfigDscr = pFullSpeedConfigDscr;
+ 151   1         ((CONFIGDSCR xdata *)pConfigDscr)->type = CONFIG_DSCR;
+ 152   1         pOtherConfigDscr = pHighSpeedConfigDscr;
+ 153   1         ((CONFIGDSCR xdata *)pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 154   1      
+ 155   1         EZUSB_IRQ_CLEAR();
+ 156   1         USBIRQ = bmURES; // Clear URES IRQ
+ 157   1      }
+ 158          
+ 159          void ISR_Susp(void) interrupt 0
+ 160          {
+ 161   1         Sleep = TRUE;
+ 162   1         EZUSB_IRQ_CLEAR();
+ 163   1         USBIRQ = bmSUSP;
+ 164   1      }
+ 165          
+ 166          void ISR_Highspeed(void) interrupt 0
+ 167          {
+ 168   1         if (EZUSB_HIGHSPEED())
+ 169   1         {
+ 170   2            pConfigDscr = pHighSpeedConfigDscr;
+ 171   2            ((CONFIGDSCR xdata *)pConfigDscr)->type = CONFIG_DSCR;
+ 172   2            pOtherConfigDscr = pFullSpeedConfigDscr;
+ 173   2            ((CONFIGDSCR xdata *)pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 174   2         }
+ 175   1         EZUSB_IRQ_CLEAR();
+ 176   1         USBIRQ = bmHSGRANT;
+ 177   1      }
+ 178          
+ 179          void ISR_Ep0ack(void) interrupt 0
+C51 COMPILER V7.07   SLAVEFIFO                                                             06/07/2022 20:30:18 PAGE 4   
+
+ 180          {
+ 181   1      }
+ 182          void ISR_Stub(void) interrupt 0
+ 183          {
+ 184   1      }
+ 185          void ISR_Ep0in(void) interrupt 0
+ 186          {
+ 187   1      }
+ 188          void ISR_Ep0out(void) interrupt 0
+ 189          {
+ 190   1      }
+ 191          void ISR_Ep1in(void) interrupt 0
+ 192          {
+ 193   1      }
+ 194          void ISR_Ep1out(void) interrupt 0
+ 195          {
+ 196   1      }
+ 197          void ISR_Ep2inout(void) interrupt 0
+ 198          {
+ 199   1      }
+ 200          void ISR_Ep4inout(void) interrupt 0
+ 201          {
+ 202   1      }
+ 203          void ISR_Ep6inout(void) interrupt 0
+ 204          {
+ 205   1      }
+ 206          void ISR_Ep8inout(void) interrupt 0
+ 207          {
+ 208   1      }
+ 209          void ISR_Ibn(void) interrupt 0
+ 210          {
+ 211   1      }
+ 212          void ISR_Ep0pingnak(void) interrupt 0
+ 213          {
+ 214   1      }
+ 215          void ISR_Ep1pingnak(void) interrupt 0
+ 216          {
+ 217   1      }
+ 218          void ISR_Ep2pingnak(void) interrupt 0
+ 219          {
+ 220   1      }
+ 221          void ISR_Ep4pingnak(void) interrupt 0
+ 222          {
+ 223   1      }
+ 224          void ISR_Ep6pingnak(void) interrupt 0
+ 225          {
+ 226   1      }
+ 227          void ISR_Ep8pingnak(void) interrupt 0
+ 228          {
+ 229   1         
+ 230   1      }
+ 231          void ISR_Errorlimit(void) interrupt 0
+ 232          {
+ 233   1      }
+ 234          void ISR_Ep2piderror(void) interrupt 0
+ 235          {
+ 236   1      }
+ 237          void ISR_Ep4piderror(void) interrupt 0
+ 238          {
+ 239   1      }
+ 240          void ISR_Ep6piderror(void) interrupt 0
+ 241          {
+C51 COMPILER V7.07   SLAVEFIFO                                                             06/07/2022 20:30:18 PAGE 5   
+
+ 242   1      }
+ 243          void ISR_Ep8piderror(void) interrupt 0
+ 244          {
+ 245   1      }
+ 246          void ISR_Ep2pflag(void) interrupt 0
+ 247          {
+ 248   1      }
+ 249          void ISR_Ep4pflag(void) interrupt 0
+ 250          {
+ 251   1      }
+ 252          void ISR_Ep6pflag(void) interrupt 0
+ 253          {
+ 254   1      }
+ 255          void ISR_Ep8pflag(void) interrupt 0
+ 256          {
+ 257   1      }
+ 258          void ISR_Ep2eflag(void) interrupt 0
+ 259          {
+ 260   1      }
+ 261          void ISR_Ep4eflag(void) interrupt 0
+ 262          {
+ 263   1      }
+ 264          void ISR_Ep6eflag(void) interrupt 0
+ 265          {
+ 266   1      }
+ 267          void ISR_Ep8eflag(void) interrupt 0
+ 268          {
+ 269   1      }
+ 270          void ISR_Ep2fflag(void) interrupt 0
+ 271          {
+ 272   1      }
+ 273          void ISR_Ep4fflag(void) interrupt 0
+ 274          {
+ 275   1      }
+ 276          void ISR_Ep6fflag(void) interrupt 0
+ 277          {
+ 278   1      }
+ 279          void ISR_Ep8fflag(void) interrupt 0
+ 280          {
+ 281   1      }
+ 282          void ISR_GpifComplete(void) interrupt 0
+ 283          {
+ 284   1      }
+ 285          void ISR_GpifWaveform(void) interrupt 0
+ 286          {
+ 287   1      }
+ 288          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    391    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

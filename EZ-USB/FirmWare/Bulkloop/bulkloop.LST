@@ -1,0 +1,401 @@
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 1   
+
+
+C51 COMPILER V7.07, COMPILATION OF MODULE BULKLOOP
+OBJECT MODULE PLACED IN bulkloop.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE bulkloop.c BROWSE DEBUG OBJECTEXTEND
+
+stmt level    source
+
+   1          #pragma NOIV
+   2          #include "fx2.h"
+   3          #include "fx2regs.h"
+   4          #include "syncdly.h"
+   5          
+   6          extern BOOL GotSUD; // Received setup data flag
+   7          extern BOOL Sleep;
+   8          extern BOOL Rwuen;
+   9          extern BOOL Selfpwr;
+  10          
+  11          BYTE Configuration;    // Current configuration
+  12          BYTE AlternateSetting; // Alternate settings
+  13          
+  14          #define bmEP2IRQ 0x10
+  15          #define bmEP4IRQ 0x20
+  16          #define bmEP6IRQ 0x40
+  17          #define bmEP8IRQ 0x80
+  18          
+  19          #define false 0
+  20          #define true (!false)
+  21          #define POWER_LED_OFF() \
+  22             do                   \
+  23             {                    \
+  24                IOE &= ~0x0C;     \
+  25             } while (false)
+  26          #define POWER_LED_RED() \
+  27             do                   \
+  28             {                    \
+  29                IOE &= ~0x08;     \
+  30                IOE |= 0x04;      \
+  31             } while (false)
+  32          #define POWER_LED_GREEN() \
+  33             do                     \
+  34             {                      \
+  35                IOE &= ~0x04;       \
+  36                IOE |= 0x08;        \
+  37             } while (false)
+  38          
+  39          void TD_Init(void)
+  40          {
+  41   1         CPUCS = ((CPUCS & ~bmCLKSPD) | bmCLKSPD1);
+  42   1         SYNCDELAY;
+  43   1      
+  44   1         IFCONFIG |= 0x40;
+  45   1         SYNCDELAY;
+  46   1      
+  47   1         EP2CFG = 0xA2;
+  48   1         SYNCDELAY;
+  49   1         EP6CFG = 0xE2;
+  50   1         SYNCDELAY;
+  51   1      
+  52   1         EP4CFG = 0xA2;
+  53   1         SYNCDELAY;
+  54   1         EP8CFG = 0xE2;
+  55   1         SYNCDELAY;
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 2   
+
+  56   1      
+  57   1         EP2BCL = 0x80;
+  58   1         SYNCDELAY;
+  59   1         EP2BCL = 0x80;
+  60   1         SYNCDELAY;
+  61   1      
+  62   1         EP4BCL = 0x80;
+  63   1         SYNCDELAY;
+  64   1         EP4BCL = 0x80;
+  65   1         SYNCDELAY;
+  66   1      
+  67   1         AUTOPTRSETUP |= 0x01;
+  68   1      
+  69   1         USBIE != bmSOF;
+*** WARNING C275 IN LINE 69 OF BULKLOOP.C: expression with possibly no effect
+  70   1         EPIE = bmEP2IRQ | bmEP4IRQ | bmEP6IRQ | bmEP8IRQ;
+  71   1         OEE = 0xFF;
+  72   1      }
+  73          
+  74          void TD_Poll(void)
+  75          {
+  76   1         WORD i;
+  77   1         WORD count;
+  78   1         if (!(EP2468STAT & bmEP2EMPTY))
+  79   1         {
+  80   2            if (!(EP2468STAT & bmEP6FULL))
+  81   2            {
+  82   3               APTR1H = MSB(&EP2FIFOBUF);
+  83   3               APTR1L = LSB(&EP2FIFOBUF);
+  84   3               AUTOPTRH2 = MSB(&EP6FIFOBUF);
+  85   3               AUTOPTRL2 = LSB(&EP6FIFOBUF);
+  86   3      
+  87   3               count = (EP2BCH << 8) + EP2BCL;
+  88   3      
+  89   3               for (i = 0x00; i < count; i++)
+  90   3               {
+  91   4                  EXTAUTODAT2 = EXTAUTODAT1;
+  92   4               }
+  93   3               EP6BCH = EP2BCH;
+  94   3               SYNCDELAY;
+  95   3               EP6BCL = EP2BCL;
+  96   3               SYNCDELAY;
+  97   3               EP2BCL = 0x80;
+  98   3            }
+  99   2         }
+ 100   1      
+ 101   1         if (!(EP2468STAT & bmEP4EMPTY))
+ 102   1         {
+ 103   2            if (!(EP2468STAT & bmEP8FULL))
+ 104   2            {
+ 105   3               APTR1H = MSB(&EP4FIFOBUF);
+ 106   3               APTR1L = LSB(&EP4FIFOBUF);
+ 107   3               AUTOPTRH2 = MSB(&EP8FIFOBUF);
+ 108   3               AUTOPTRL2 = LSB(&EP8FIFOBUF);
+ 109   3      
+ 110   3               count = (EP4BCH << 8) + EP4BCL;
+ 111   3      
+ 112   3               for (i = 0x00; i < count; i++)
+ 113   3               {
+ 114   4                  EXTAUTODAT2 = EXTAUTODAT1;
+ 115   4               }
+ 116   3               EP8BCH = EP4BCH;
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 3   
+
+ 117   3               SYNCDELAY;
+ 118   3               EP8BCL = EP4BCL;
+ 119   3               SYNCDELAY;
+ 120   3               EP4BCL = 0x80;
+ 121   3            }
+ 122   2         }
+ 123   1      }
+ 124          
+ 125          BOOL TD_Suspend(void) // Called before the device goes into suspend mode
+ 126          {
+ 127   1         return (TRUE);
+ 128   1      }
+ 129          
+ 130          BOOL TD_Resume(void) // Called after the device resumes
+ 131          {
+ 132   1         return (TRUE);
+ 133   1      }
+ 134          
+ 135          BOOL DR_GetDescriptor(void)
+ 136          {
+ 137   1         return (TRUE);
+ 138   1      }
+ 139          
+ 140          BOOL DR_SetConfiguration(void) // Called when a Set Configuration command is received
+ 141          {
+ 142   1         Configuration = SETUPDAT[2];
+ 143   1         return (TRUE); // Handled by user code
+ 144   1      }
+ 145          
+ 146          BOOL DR_GetConfiguration(void) // Called when a Get Configuration command is received
+ 147          {
+ 148   1         EP0BUF[0] = Configuration;
+ 149   1         EP0BCH = 0;
+ 150   1         EP0BCL = 1;
+ 151   1         return (TRUE); // Handled by user code
+ 152   1      }
+ 153          BOOL DR_SetInterface(void) // Called when a Set Interface command is received
+ 154          {
+ 155   1         AlternateSetting = SETUPDAT[2];
+ 156   1         return (TRUE); // Handled by user code
+ 157   1      }
+ 158          
+ 159          BOOL DR_GetInterface(void) // Called when a Set Interface command is received
+ 160          {
+ 161   1         EP0BUF[0] = AlternateSetting;
+ 162   1         EP0BCH = 0;
+ 163   1         EP0BCL = 1;
+ 164   1         return (TRUE); // Handled by user code
+ 165   1      }
+ 166          
+ 167          BOOL DR_GetStatus(void)
+ 168          {
+ 169   1         return (TRUE);
+ 170   1      }
+ 171          
+ 172          BOOL DR_ClearFeature(void)
+ 173          {
+ 174   1         return (TRUE);
+ 175   1      }
+ 176          
+ 177          BOOL DR_SetFeature(void)
+ 178          {
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 4   
+
+ 179   1         return (TRUE);
+ 180   1      }
+ 181          
+ 182          BOOL DR_VendorCmnd(void)
+ 183          {
+ 184   1         return (TRUE);
+ 185   1      }
+ 186          
+ 187          void ISR_Sudav(void) interrupt 0
+ 188          {
+ 189   1         GotSUD = TRUE; // Set flag
+ 190   1         EZUSB_IRQ_CLEAR();
+ 191   1         USBIRQ = bmSUDAV; // Clear SUDAV IRQ
+ 192   1      }
+ 193          
+ 194          // Setup Token Interrupt Handler
+ 195          void ISR_Sutok(void) interrupt 0
+ 196          {
+ 197   1         EZUSB_IRQ_CLEAR();
+ 198   1         USBIRQ = bmSUTOK; // Clear SUTOK IRQ
+ 199   1      }
+ 200          
+ 201          void ISR_Sof(void) interrupt 0
+ 202          {
+ 203   1      
+ 204   1         EZUSB_IRQ_CLEAR();
+ 205   1         USBIRQ = bmSOF; // Clear SOF IRQ
+ 206   1      }
+ 207          
+ 208          void ISR_Ures(void) interrupt 0
+ 209          {
+ 210   1         // whenever we get a USB reset, we should revert to full speed mode
+ 211   1         pConfigDscr = pFullSpeedConfigDscr;
+ 212   1         ((CONFIGDSCR xdata *)pConfigDscr)->type = CONFIG_DSCR;
+ 213   1         pOtherConfigDscr = pHighSpeedConfigDscr;
+ 214   1         ((CONFIGDSCR xdata *)pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 215   1      
+ 216   1         EZUSB_IRQ_CLEAR();
+ 217   1         USBIRQ = bmURES; // Clear URES IRQ
+ 218   1      }
+ 219          
+ 220          void ISR_Susp(void) interrupt 0
+ 221          {
+ 222   1         Sleep = TRUE;
+ 223   1         EZUSB_IRQ_CLEAR();
+ 224   1         USBIRQ = bmSUSP;
+ 225   1      }
+ 226          
+ 227          void ISR_Highspeed(void) interrupt 0
+ 228          {
+ 229   1         if (EZUSB_HIGHSPEED())
+ 230   1         {
+ 231   2            pConfigDscr = pHighSpeedConfigDscr;
+ 232   2            ((CONFIGDSCR xdata *)pConfigDscr)->type = CONFIG_DSCR;
+ 233   2            pOtherConfigDscr = pFullSpeedConfigDscr;
+ 234   2            ((CONFIGDSCR xdata *)pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 235   2         }
+ 236   1         EZUSB_IRQ_CLEAR();
+ 237   1         USBIRQ = bmHSGRANT;
+ 238   1      }
+ 239          
+ 240          void ISR_Ep0ack(void) interrupt 0
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 5   
+
+ 241          {
+ 242   1      }
+ 243          void ISR_Stub(void) interrupt 0
+ 244          {
+ 245   1      }
+ 246          void ISR_Ep0in(void) interrupt 0
+ 247          {
+ 248   1      }
+ 249          void ISR_Ep0out(void) interrupt 0
+ 250          {
+ 251   1      }
+ 252          void ISR_Ep1in(void) interrupt 0
+ 253          {
+ 254   1      }
+ 255          void ISR_Ep1out(void) interrupt 0
+ 256          {
+ 257   1      }
+ 258          BYTE LEDFLAG = 0;
+ 259          void ISR_Ep2inout(void) interrupt 0
+ 260          {
+ 261   1         if (LEDFLAG)
+ 262   1         {
+ 263   2            POWER_LED_RED();
+ 264   2            LEDFLAG = !LEDFLAG;
+ 265   2         }
+ 266   1         else
+ 267   1         {
+ 268   2            POWER_LED_GREEN();
+ 269   2            LEDFLAG = !LEDFLAG;
+ 270   2         }
+ 271   1         EZUSB_IRQ_CLEAR();
+ 272   1         EPIRQ = bmEP2IRQ; // Clear IRQ
+ 273   1      }
+ 274          void ISR_Ep4inout(void) interrupt 0
+ 275          {
+ 276   1      }
+ 277          
+ 278          void ISR_Ep6inout(void) interrupt 0
+ 279          {
+ 280   1         // Clear IRQ         dum = D2OFF;
+ 281   1      }
+ 282          void ISR_Ep8inout(void) interrupt 0
+ 283          {
+ 284   1      }
+ 285          void ISR_Ibn(void) interrupt 0
+ 286          {
+ 287   1      }
+ 288          void ISR_Ep0pingnak(void) interrupt 0
+ 289          {
+ 290   1      }
+ 291          void ISR_Ep1pingnak(void) interrupt 0
+ 292          {
+ 293   1      }
+ 294          void ISR_Ep2pingnak(void) interrupt 0
+ 295          {
+ 296   1      }
+ 297          void ISR_Ep4pingnak(void) interrupt 0
+ 298          {
+ 299   1      }
+ 300          void ISR_Ep6pingnak(void) interrupt 0
+ 301          {
+ 302   1         EZUSB_IRQ_CLEAR();
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 6   
+
+ 303   1         EPIRQ = bmEP6IRQ;
+ 304   1      }
+ 305          void ISR_Ep8pingnak(void) interrupt 0
+ 306          {
+ 307   1      }
+ 308          void ISR_Errorlimit(void) interrupt 0
+ 309          {
+ 310   1      }
+ 311          void ISR_Ep2piderror(void) interrupt 0
+ 312          {
+ 313   1      }
+ 314          void ISR_Ep4piderror(void) interrupt 0
+ 315          {
+ 316   1      }
+ 317          void ISR_Ep6piderror(void) interrupt 0
+ 318          {
+ 319   1      }
+ 320          void ISR_Ep8piderror(void) interrupt 0
+ 321          {
+ 322   1      }
+ 323          void ISR_Ep2pflag(void) interrupt 0
+ 324          {
+ 325   1      }
+ 326          void ISR_Ep4pflag(void) interrupt 0
+ 327          {
+ 328   1      }
+ 329          void ISR_Ep6pflag(void) interrupt 0
+ 330          {
+ 331   1      }
+ 332          void ISR_Ep8pflag(void) interrupt 0
+ 333          {
+ 334   1      }
+ 335          void ISR_Ep2eflag(void) interrupt 0
+ 336          {
+ 337   1      }
+ 338          void ISR_Ep4eflag(void) interrupt 0
+ 339          {
+ 340   1      }
+ 341          void ISR_Ep6eflag(void) interrupt 0
+ 342          {
+ 343   1      }
+ 344          void ISR_Ep8eflag(void) interrupt 0
+ 345          {
+ 346   1      }
+ 347          void ISR_Ep2fflag(void) interrupt 0
+ 348          {
+ 349   1      }
+ 350          void ISR_Ep4fflag(void) interrupt 0
+ 351          {
+ 352   1      }
+ 353          void ISR_Ep6fflag(void) interrupt 0
+ 354          {
+ 355   1      }
+ 356          void ISR_Ep8fflag(void) interrupt 0
+ 357          {
+ 358   1      }
+ 359          void ISR_GpifComplete(void) interrupt 0
+ 360          {
+ 361   1      }
+ 362          void ISR_GpifWaveform(void) interrupt 0
+ 363          {
+ 364   1      }
+C51 COMPILER V7.07   BULKLOOP                                                              06/07/2022 20:21:13 PAGE 7   
+
+ 365          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    718    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

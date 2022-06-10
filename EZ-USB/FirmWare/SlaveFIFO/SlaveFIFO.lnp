@@ -1,0 +1,7 @@
+"dscr.obj",
+".\EZUSB.LIB",
+"fw.obj",
+"SlaveFIFO.obj",
+".\USBJmpTb.OBJ" 
+TO "SlaveFIFO" 
+RAMSIZE(256) 

@@ -1,0 +1,64 @@
+<html>
+<body>
+<pre>
+<h1>µVision2 Build Log</h1>
+<h2>Project:</h2>
+F:\EZ-USB\FirmWare\SlaveFIFO\SlaveFIFO.uv2
+Project File Date:  06/07/2022
+
+<h2>Output:</h2>
+Build target 'Target 1'
+assembling dscr.a51...
+compiling fw.c...
+compiling SlaveFIFO.c...
+SLAVEFIFO.C(69): warning C275: expression with possibly no effect
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_SUSPEND?SLAVEFIFO
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_RESUME?SLAVEFIFO
+Program Size: data=46.5 xdata=4473 code=2315
+creating hex file from "SlaveFIFO"...
+User command #1: hex2bix -i -f 0xC2 -o SlaveFIFO.iic SlaveFIFO.hex
+Intel Hex file to EZ-USB Binary file conversion utility
+Copyright (c) 2012-2013, Cypress Semiconductor Inc.
+2340 Bytes written.
+Total Code Bytes = 2315
+Conversion completed successfully.
+"SlaveFIFO" - 0 Error(s), 3 Warning(s).
+Build target 'Target 1'
+assembling dscr.a51...
+compiling fw.c...
+compiling SlaveFIFO.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_SUSPEND?SLAVEFIFO
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_RESUME?SLAVEFIFO
+Program Size: data=43.5 xdata=4473 code=1856
+creating hex file from "SlaveFIFO"...
+User command #1: hex2bix -i -f 0xC2 -o SlaveFIFO.iic SlaveFIFO.hex
+Intel Hex file to EZ-USB Binary file conversion utility
+Copyright (c) 2012-2013, Cypress Semiconductor Inc.
+1877 Bytes written.
+Total Code Bytes = 1856
+Conversion completed successfully.
+"SlaveFIFO" - 0 Error(s), 2 Warning(s).
+Build target 'Target 1'
+assembling dscr.a51...
+compiling fw.c...
+compiling SlaveFIFO.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_SUSPEND?SLAVEFIFO
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TD_RESUME?SLAVEFIFO
+Program Size: data=43.5 xdata=4473 code=1931
+creating hex file from "SlaveFIFO"...
+User command #1: hex2bix -i -f 0xC2 -o SlaveFIFO.iic SlaveFIFO.hex
+Intel Hex file to EZ-USB Binary file conversion utility
+Copyright (c) 2012-2013, Cypress Semiconductor Inc.
+1952 Bytes written.
+Total Code Bytes = 1931
+Conversion completed successfully.
+"SlaveFIFO" - 0 Error(s), 2 Warning(s).
